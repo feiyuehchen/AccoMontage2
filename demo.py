@@ -3,8 +3,18 @@ from miditok import REMI, TokenizerConfig
 from symusic import Score
 config = TokenizerConfig(num_velocities=16, use_chords=False, use_programs=False)
 tokenizer = REMI(config)
-from demo_utils import get_key, get_chord_analysis, get_advanced_chord_analysis, get_detailed_key_analysis, get_key_for_cdt, get_mode_for_cdt, get_auto_config, fill_empty_bars_with_chords
-
+from demo_utils import (get_key, 
+                       get_chord_analysis, 
+                       get_advanced_chord_analysis, 
+                       get_detailed_key_analysis, 
+                       get_key_for_cdt, 
+                       get_mode_for_cdt, 
+                       get_auto_config, 
+                       fill_empty_bars_with_chords, 
+                       export_chords_txt,
+                       export_chords_txt_chorder,
+                       sync_output_tempo_with_input
+                       )
 
 if __name__ == '__main__':
     # Original demo code
@@ -54,5 +64,9 @@ if __name__ == '__main__':
         empty_bars,
         demo_name + '_output_results/chord_gen_filled_empty_bars.mid'
     )
+    # Sync output tempo to input tempo
+    sync_output_tempo_with_input(input_melody_path, [output_file])
     
     print(f"Final output: {output_file}")
+    export_chords_txt_chorder(output_file, demo_name + '_output_results/chord_gen_filled_empty_bars.txt')
+
