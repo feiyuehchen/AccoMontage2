@@ -402,8 +402,10 @@ class Core:
         if 'base_dir' in kwargs:
             cwd = os.getcwd()
             os.chdir(kwargs['base_dir'])
+        # return chord_gen only for chord task by Fei-Yueh
         if task == 'chord' or task == 'chord_and_textured_chord':
             chord_gen.write(output_name + '/chord_gen.mid')
+            return chord_gen
         if task == 'textured_chord' or task == 'texture' or task == 'chord_and_textured_chord':
             gen.write(output_name + '/textured_chord_gen.mid')
         self.state = 6

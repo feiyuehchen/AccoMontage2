@@ -10,7 +10,7 @@ import time
 import pretty_midi
 from flask import Flask, request, send_from_directory, send_file, make_response, jsonify
 
-sys.path.append('..')
+sys.path.append('/home/feiyueh/AccoMontage2')
 import chorderator as cdt
 from Sessions import Sessions
 from construct_midi_seg import construct_midi_seg, MIDI_FOLDER

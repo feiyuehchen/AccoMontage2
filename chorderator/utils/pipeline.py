@@ -97,7 +97,7 @@ class Pipeline:
                                      kwargs['note_shift'])
         return processor.get()
 
-    def __add_textures(self, output, log, melo=None, do_add_textures=True, **kwargs):
+    def __add_textures(self, output, log=None, melo=None, do_add_textures=True, **kwargs):
         original_tempo = self.meta['tempo']
         if not melo:
             melo = self.melo
