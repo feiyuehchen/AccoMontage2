@@ -361,14 +361,14 @@ class Core:
         gen = self.run(cut_in, cut_in_arg, with_texture, **kwargs)
         return gen if log else gen[0:2]
 
-    def generate_save(self, output_name, task='chord_and_textured_chord', log=True, wav=False, **kwargs):
+    def generate_save(self, output_dir, task='chord_and_textured_chord', chord_output_name=None, log=True, wav=False, **kwargs):
 
         cwd = os.getcwd()
         try:
             if 'base_dir' in kwargs:
                 os.makedirs(kwargs['base_dir'], exist_ok=True)
                 os.chdir(kwargs['base_dir'])
-            os.makedirs(output_name)
+            os.makedirs(output_dir)
         except:
             pass
         os.chdir(cwd)
@@ -393,7 +393,7 @@ class Core:
             if 'base_dir' in kwargs:
                 cwd = os.getcwd()
                 os.chdir(kwargs['base_dir'])
-            file = open(output_name + '/chord_gen_log.json', 'w')
+            file = open(output_dir + '/chord_gen_log.json', 'w')
             json.dump(gen_log, file)
             file.close()
             if 'base_dir' in kwargs:
@@ -404,16 +404,18 @@ class Core:
             os.chdir(kwargs['base_dir'])
         # return chord_gen only for chord task by Fei-Yueh
         if task == 'chord' or task == 'chord_and_textured_chord':
-            chord_gen.write(output_name + '/chord_gen.mid')
+            if chord_output_name is None:
+                chordoutput_name = 'chord_gen.mid'
+            chord_gen.write(os.path.join(output_dir, chord_output_name))
             return chord_gen
         if task == 'textured_chord' or task == 'texture' or task == 'chord_and_textured_chord':
-            gen.write(output_name + '/textured_chord_gen.mid')
+            gen.write(output_dir + '/textured_chord_gen.mid')
         self.state = 6
         if wav:
             if task == 'chord':
-                listen(chord_gen, path=output_name, out='/chord_gen.wav')
+                listen(chord_gen, path=output_dir, out='/chord_gen.wav')
             if task == 'textured_chord' or task == 'texture' or task == 'chord_and_textured_chord':
-                listen(gen, path=output_name, out='/textured_chord_gen.wav')
+                listen(gen, path=output_dir, out='/textured_chord_gen.wav')
         self.state = 7
         if 'base_dir' in kwargs:
             os.chdir(cwd)

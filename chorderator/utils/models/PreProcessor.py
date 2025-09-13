@@ -32,13 +32,14 @@ class PreProcessor:
             self.meta['pos'] = ['x' for i in splited_melo]
             if 'tempo' not in self.meta.keys():
                 self.meta['tempo'] = self.midi.get_tempo_changes()[1][0]
-                self.meta['unit'] = 60 / self.meta['tempo'] / 4
+            self.meta['unit'] = 60 / self.meta['tempo'] / 4
             print(self.meta)
 
         for i in splited_melo:
+            print(len(i))
             if len(i) // 16 not in PreProcessor.accepted_phrase_length:
                 handle_exception(312)
-        print(splited_melo)
+        # print(splited_melo)
         return self.melo, splited_melo, self.meta
 
     def __load_pop909_melo(self):
@@ -64,6 +65,7 @@ class PreProcessor:
 
         def quantize_note(time, unit):
             base = time // unit
+            # print(f"time: {time}, unit: {unit}, base: {base}")
             return base if time % unit < unit / 2 else base + 1
 
         def pitch_to_number(pitch, meta):
@@ -74,6 +76,7 @@ class PreProcessor:
                 return minor_map[(pitch - tonic_distance) % 12]
 
         all_notes_and_pos = []
+
         if 'tempo' not in self.meta.keys():
             # unit = 60 / self.midi.estimate_tempo() / 4
             unit = 60 / self.midi.get_tempo_changes()[1][0] / 4
@@ -85,8 +88,10 @@ class PreProcessor:
                                           quantize_note(note.end, unit)-self.note_shift,
                                           pitch_to_number(note.pitch, self.meta),
                                           note.velocity])
+
         melo_sequence = self.__construct_melo_sequence(all_notes_and_pos)
         splited_melo = []
+        print(len(melo_sequence))
 
         if self.phrase[0] != 1:
             melo_sequence = melo_sequence[16 * (self.phrase[0] - 1):]
@@ -97,6 +102,7 @@ class PreProcessor:
             if i == len(self.phrase) - 1:
                 splited_melo.append(melo_sequence[16 * (self.phrase[i] - 1):])
                 break
+
         if len(splited_melo) == 0:
             splited_melo = [melo_sequence]
         return splited_melo
@@ -105,12 +111,14 @@ class PreProcessor:
     def __construct_melo_sequence(all_notes_and_pos):
 
         def fix_end(max_end):
-            return int(((max_end // 4) + 1) * 4)
+            return int(max_end) if int(max_end) % 4 == 0 else int(((max_end//4)+1) * 4)
 
         def is_note_playing_at_cursor(note, cursor):
             return True if note[0] <= cursor < note[1] else False
 
+        # print(all_notes_and_pos)
         max_end = max(all_notes_and_pos, key=lambda x: x[1])[1]
+        print(f"max_end: {max_end}")
 
         fixed_end = fix_end(max_end // 16)
 
@@ -118,6 +126,9 @@ class PreProcessor:
             handle_exception(312)
         else:
             fixed_end *= 16
+        print(f"fixed_end: {fixed_end}")
+
+        # fixed_end = int((max_end // 16) * 16)
 
         note_dict = {i: all_notes_and_pos[i] for i in range(len(all_notes_and_pos))}
         melo_sequence, cache = [], -1

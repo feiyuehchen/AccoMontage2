@@ -2,14 +2,12 @@ from miditok import REMI, TokenizerConfig
 from symusic import Score
 config = TokenizerConfig(num_velocities=16, use_chords=True, use_programs=True, use_tempos=True)
 tokenizer = REMI(config)
-
+import copy
 import mido
 import os
-try:
-    from chorder import Dechorder
-    _HAS_CHORDER = True
-except Exception:
-    _HAS_CHORDER = False
+
+from chorder import Dechorder
+
 
 
 
@@ -618,9 +616,10 @@ def analyze_midi_structure(tokens):
         if token.startswith('Pitch_'):
             first_note_position = i
             break
-    
-    # Calculate empty bars before first note
+
+
     empty_bars = 0
+    # Calculate empty bars before first note
     if first_note_position is not None:
         for bar_pos in bar_positions:
             if bar_pos < first_note_position:
@@ -630,7 +629,7 @@ def analyze_midi_structure(tokens):
     
     # Calculate content bars (bars with actual content)
     # add last four bars to avoid missing the last bar
-    content_bars = total_bars - empty_bars + 4
+    content_bars = total_bars - empty_bars
     
     # Calculate note_shift (empty_bars * 16 positions per bar)
     note_shift = empty_bars * 16
@@ -680,8 +679,8 @@ def calculate_segmentation(content_bars):
     else:
         # 9+ bars: A8B8A8B8... pattern
         segments = []
+
         remaining_bars = content_bars
-        
         # Add 8-bar segments, alternating between A and B
         segment_count = 0
         while remaining_bars >= 8:
@@ -1009,8 +1008,6 @@ def export_chords_txt_chorder(midi_file_path, output_txt_path=None, beats=True):
     Alternative exporter using chorder (by-beat chord detection).
     Falls back to export_chords_txt if chorder is unavailable.
     """
-    if not _HAS_CHORDER:
-        return export_chords_txt(midi_file_path, output_txt_path)
     from miditoolkit.midi import parser
     from chorder import Dechorder
     midi = parser.MidiFile(midi_file_path)
@@ -1195,7 +1192,7 @@ def sync_output_tempo_with_input(input_midi_path: str, output_midi_paths: list[s
         written.append(set_midi_global_bpm(p, bpm))
     return written
 
-def fill_empty_bars_with_chords(midi_file_path, empty_bars, output_path=None):
+def fill_empty_bars_with_chords(input_melody_path, midi_file_path, empty_bars, output_path=None):
     """
     Fill empty bars at the beginning with chords from the chord generation using symusic.
     
@@ -1209,28 +1206,30 @@ def fill_empty_bars_with_chords(midi_file_path, empty_bars, output_path=None):
     """
     # 載入 MIDI 文件
     score = Score(midi_file_path, ttype="tick")
-    
+    original_score = Score(input_melody_path, ttype="tick")
+    print(f"tempos: {original_score.tempos}")
+    print(f"score.tempos: {score.tempos}")
     if len(score.tracks) < 2:
         print("Warning: MIDI file doesn't have both piano and chord tracks")
         return midi_file_path
     
     # 找到鋼琴和和弦軌道
-    piano_track = None
-    chord_track = None
+    piano_track = 0
+    chord_track = 1
     
-    for i, track in enumerate(score.tracks):
-        track_name = track.name.lower() if track.name else ''
-        if 'piano' in track_name or 'acoustic' in track_name:
-            piano_track = i
-        elif ('chord' in track_name or 
-              track_name == '' or 
-              track_name is None or
-              i == 1):  # 通常和弦軌道是第二個
-            chord_track = i
+    # for i, track in enumerate(score.tracks):
+    #     track_name = track.name.lower() if track.name else ''
+    #     if 'piano' in track_name or 'acoustic' in track_name:
+    #         piano_track = i
+    #     elif ('chord' in track_name or 
+    #           track_name == '' or 
+    #           track_name is None or
+    #           i == 1):  # 通常和弦軌道是第二個
+    #         chord_track = i
     
-    if piano_track is None or chord_track is None:
-        print("Warning: Could not find both piano and chord tracks")
-        return midi_file_path
+    # if piano_track is None or chord_track is None:
+    #     print("Warning: Could not find both piano and chord tracks")
+    #     return midi_file_path
     
     print(f"Found piano track: {piano_track}, chord track: {chord_track}")
     
@@ -1279,52 +1278,29 @@ def fill_empty_bars_with_chords(midi_file_path, empty_bars, output_path=None):
     print(f"Pattern end time: {pattern_end_time}")
     
     # 創建新的 Score
-    new_score = Score()
-    new_score.ticks_per_quarter = score.ticks_per_quarter
-    
-    # 複製所有軌道
-    for i, track in enumerate(score.tracks):
-        if i == chord_track:
-            # 對於和弦軌道，創建填充版本
-            print(f"Processing chord track {i}")
-            
-            # 創建模式音符（從時間 0 開始）
-            pattern_notes_shifted = []
-            for note in pattern_notes:
-                new_note = note.copy()
-                new_note.start = note.start - first_chord_time
-                new_note.end = note.end - first_chord_time
-                pattern_notes_shifted.append(new_note)
-             
-            # 創建原始音符（從 empty_ticks 開始）
-            original_notes_shifted = []
-            for note in chord_track_obj.notes:
-                if note.start >= first_chord_time:
-                    new_note = note.copy()
-                    new_note.start = note.start - first_chord_time + empty_ticks
-                    new_note.end = note.end - first_chord_time + empty_ticks
-                    original_notes_shifted.append(new_note)
-            
-            # 合併模式音符和原始音符
-            all_notes = pattern_notes_shifted + original_notes_shifted
-            
-            # 創建新的軌道
-            new_track = track.copy()
-            new_track.notes = all_notes
-            new_track.notes.sort(key=lambda x: x.start)
-            
-            new_score.tracks.append(new_track)
-        else:
-            # 對於其他軌道（如鋼琴），原樣複製
-            print(f"Copying track {i} as-is")
-            new_score.tracks.append(track.copy())
+    new_score = copy.deepcopy(score)
+    for note in pattern_notes:
+        new_note = copy.deepcopy(note)
+        new_note.start = note.start - first_chord_time
+        new_note.end = note.end - first_chord_time
+        new_score.tracks[chord_track].notes.append(new_note)
+
+    new_score.tracks[chord_track].sort()
+
+
     
     # 確定輸出路徑
     if output_path is None:
         base_path = os.path.splitext(midi_file_path)[0]
         output_path = f"{base_path}_filled_empty_bars.mid"
+
+    # new_score.tempos = original_score.tempos
+
     
     # 儲存修改後的 MIDI 文件
+    print(original_score.tracks[0].notes)
+    print(new_score.tracks[0].notes)
+
     new_score.dump_midi(output_path)
     
     print(f"Filled {bars_to_fill} empty bars with chord pattern")
@@ -1332,3 +1308,14 @@ def fill_empty_bars_with_chords(midi_file_path, empty_bars, output_path=None):
     
     return output_path
 
+def preprocess_melody(input_melody_path, output_melody_path):
+    """
+    Preprocess the melody, leave only one track
+    """
+    print(f"Preprocessing melody: {input_melody_path}")
+    score = Score(input_melody_path, ttype="tick")
+    for i, track in enumerate(score.tracks):
+        if track.notes:
+            score.tracks = [track]
+            break
+    score.dump_midi(output_melody_path)

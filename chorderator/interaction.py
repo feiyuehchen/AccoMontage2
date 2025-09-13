@@ -87,8 +87,8 @@ def generate(cut_in=False, with_texture=True, log=False, **kwargs):
     return _core.generate(cut_in=cut_in, with_texture=with_texture, log=log, **kwargs)
 
 
-def generate_save(output_name, task='chord_and_textured_chord', log=True, wav=False, **kwargs):
-    return _core.generate_save(output_name=output_name, task=task, log=log, wav=wav, **kwargs)
+def generate_save(output_dir, chord_output_name=None, task='chord_and_textured_chord', log=True, wav=False, **kwargs):
+    return _core.generate_save(output_dir=output_dir, chord_output_name=chord_output_name, task=task, log=log, wav=wav, **kwargs)
 
 
 def get_current_config():
