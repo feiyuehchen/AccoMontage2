@@ -177,6 +177,14 @@ chord_map = {
     'None': 'N'
 }
 
+quality_mapping = {
+    'o': 'dim',
+    '+': 'aug',
+    'o7': 'dim7',
+    '/o7': 'hdim7',
+    'o/7': 'hdim7'
+}
+
 def convert_chorder_to_btc(chorder_chord):
     """
     Convert chorder chord format to btc format using the chord_map dictionary
@@ -185,9 +193,49 @@ def convert_chorder_to_btc(chorder_chord):
     if chorder_chord is None or chorder_chord == 'None':
         return 'N'
     
+    # Handle colon format first (C:o/D)
+    if ':' in chorder_chord:
+        root, quality = chorder_chord.split(':', 1)
+        
+        # Check if quality contains slash (bass note)
+        if '/' in quality:
+            chord_quality, bass = quality.split('/', 1)
+            # Convert chord quality to BTC format
+            quality_btc = quality_mapping.get(chord_quality, chord_quality)
+            return f"{root}:{quality_btc}/{bass}"
+        else:
+            # Convert quality to BTC format
+            quality_btc = quality_mapping.get(quality, quality)
+            return f"{root}:{quality_btc}"
+    
+    # Handle slash chords (bass notes) - check if bass is a valid note
+    if '/' in chorder_chord:
+        root_quality, bass = chorder_chord.split('/', 1)
+        # Check if bass is a valid note name
+        valid_notes = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B']
+        if bass in valid_notes:
+            # Convert the root_quality part first
+            root_quality_btc = convert_chorder_to_btc(root_quality)
+            if root_quality_btc != 'N':
+                return f"{root_quality_btc}/{bass}"
+        # If bass is not a valid note, treat the whole thing as a chord quality
+        # This handles cases like C/o7 where o7 is a quality, not a bass note
+        # Extract root from root_quality (e.g., "C" from "C/o7")
+        if '/' in root_quality:
+            # This shouldn't happen, but handle it
+            root = root_quality.split('/')[0]
+        else:
+            root = root_quality
+        quality_btc = quality_mapping.get(bass, bass)
+        return f"{root}:{quality_btc}"
+    
     # Direct mapping if exists
     if chorder_chord in chord_map:
         return chord_map[chorder_chord]
+    
+    # If not found in mapping, return 'N'
+    print(f"Warning: Unknown chord '{chorder_chord}', returning 'N'")
+    return 'N'
 
 def acc2btc(acc_path, btc_path):
     """
