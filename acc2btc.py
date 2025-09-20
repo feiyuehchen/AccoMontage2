@@ -193,17 +193,19 @@ def convert_chorder_to_btc(chorder_chord):
     if chorder_chord is None or chorder_chord == 'None':
         return 'N'
     
-    # Handle colon format first (C:o/D)
+    # Handle colon format first (C:o/D, C:/o7)
     if ':' in chorder_chord:
         root, quality = chorder_chord.split(':', 1)
         
         # Check if quality contains slash (bass note)
-        if '/' in quality:
+        if '/' in quality and not quality.startswith('/'):
+            # This is a bass note case like C:o/D
             chord_quality, bass = quality.split('/', 1)
             # Convert chord quality to BTC format
             quality_btc = quality_mapping.get(chord_quality, chord_quality)
             return f"{root}:{quality_btc}/{bass}"
         else:
+            # This is a quality case like C:/o7 or C:o
             # Convert quality to BTC format
             quality_btc = quality_mapping.get(quality, quality)
             return f"{root}:{quality_btc}"
